@@ -21,13 +21,17 @@ a local Graph network for debugging & integration tests
 ## ipfs
 
 - cat file via curl:
-  ```bash
-  curl -X POST "http://localhost:5001/api/v0/cat?arg=f1220d6b169dcf83bfe0f615baa2d83e9adf77d520b52faf18a759eb7277b6d66fa7f"
-  ```
+  
+```bash
+curl -X POST "http://localhost:5001/api/v0/cat?arg=f1220d6b169dcf83bfe0f615baa2d83e9adf77d520b52faf18a759eb7277b6d66fa7f"
+```
+
 - cat file via CLI:
-  ```bash
-  ipfs --api=/ip4/127.0.0.1/tcp/5001 cat QmagRyTMp4qcRb8fJufk7urNwCQmmUEB9mC6nxHQuKwydb
-  ```
+
+```bash
+ipfs --api=/ip4/127.0.0.1/tcp/5001 cat QmagRyTMp4qcRb8fJufk7urNwCQmmUEB9mC6nxHQuKwydb
+```
+
 - note: if you have a hex digest, a valid CID for it is the hex digits prefixed by `f1220`. For example, `0xd6b169dcf83bfe0f615baa2d83e9adf77d520b52faf18a759eb7277b6d66fa7f` -> `f1220d6b169dcf83bfe0f615baa2d83e9adf77d520b52faf18a759eb7277b6d66fa7f`
 
 ## postgres
@@ -42,7 +46,7 @@ a local Graph network for debugging & integration tests
 
 - subgraph: http://localhost:8000/subgraphs/name/graph-network
 
-  ```graphql
+```graphql
   {
     indexers {
       id
@@ -70,13 +74,13 @@ a local Graph network for debugging & integration tests
       deployment
     }
   }
-  ```
+```
 
 ## block-oracle
 
 - subgraph: http://localhost:8000/subgraphs/name/block-oracle
 
-  ```graphql
+```graphql
   {
     networks {
       id
@@ -88,7 +92,7 @@ a local Graph network for debugging & integration tests
       deployment
     }
   }
-  ```
+```
 
 ## indexer-agent
 
@@ -113,7 +117,7 @@ docker exec -it redpanda rpk topic consume gateway_client_query_results --broker
 
 - subgraph: http://localhost:8000/subgraphs/name/semiotic/tap
 
-  ```graphql
+```graphql
   {
     escrowAccounts {
       balance
@@ -131,4 +135,4 @@ docker exec -it redpanda rpk topic consume gateway_client_query_results --broker
       deployment
     }
   }
-  ```
+```
