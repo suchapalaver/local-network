@@ -1,7 +1,7 @@
 services:
   chain:
     container_name: chain
-    image: ghcr.io/foundry-rs/foundry:stable
+    image: ghcr.io/foundry-rs/foundry:latest
     ports: ["${CHAIN_RPC}:8545"]
     command: ["anvil --host=0.0.0.0 --chain-id=1337 --base-fee=0"]
     healthcheck: { interval: 1s, retries: 10, test: cast block }
@@ -77,7 +77,8 @@ services:
 
   indexer-agent:
     container_name: indexer-agent
-    build: { context: indexer-agent }
+    platform: linux/arm64
+    image: local-indexer-agent:latest
     depends_on:
       block-oracle: { condition: service_healthy }
     ports: ["${INDEXER_MANAGEMENT}:7600"]
