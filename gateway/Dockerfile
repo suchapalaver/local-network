@@ -1,12 +1,22 @@
-FROM debian:bookworm-slim
-RUN apt-get update \
-  && apt-get install -y clang cmake curl git jq libsasl2-dev libssl-dev pkg-config \
-  && rm -rf /var/lib/apt/lists/*
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
+FROM localhost/local-base-builder:latest AS builder
 
 WORKDIR /opt
-RUN git clone https://github.com/edgeandnode/gateway --branch 'main' && \
-  cd gateway && . /root/.cargo/env && cargo build -p graph-gateway && \
-  cp target/debug/graph-gateway /usr/local/bin/graph-gateway && cd .. && rm -rf gateway
+
+# Build gateway
+RUN git clone https://github.com/edgeandnode/gateway --branch 'main' gateway-build && \
+    cd gateway-build && \
+    . $HOME/.cargo/env && \
+    cargo build -p graph-gateway && \
+    cp target/debug/graph-gateway /opt/ && \
+    cd .. && \
+    rm -rf gateway
+
+FROM localhost/local-base-runtime:latest
+
+WORKDIR /opt
+
+# Copy built binary
+COPY --from=builder /opt/graph-gateway .
+
 COPY ./run.sh /opt/run.sh
-ENTRYPOINT bash -cl /opt/run.sh
+ENTRYPOINT ["bash", "-cl", "/opt/run.sh"]
