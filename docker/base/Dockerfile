@@ -21,10 +21,6 @@ RUN apt-get update && \
     libsasl2-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Rust in rust-builder
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
-    . $HOME/.cargo/env
-
 # Get yq from official image
 FROM mikefarah/yq:latest AS yq
 
@@ -34,10 +30,14 @@ FROM rust-builder AS builder
 # Copy yq from official image
 COPY --from=yq /usr/bin/yq /usr/bin/yq
 
-# Install Node.js tools
-RUN npm install --global corepack yarn && \
+# Install Node.js tools properly
+RUN npm install --global corepack && \
     corepack enable && \
     corepack install -g yarn@4.0.2
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
+    . $HOME/.cargo/env
 
 # Install Foundry
 RUN curl -L https://foundry.paradigm.xyz | bash && \
@@ -57,7 +57,7 @@ RUN apt-get update && \
     nodejs \
     npm \
     && rm -rf /var/lib/apt/lists/* && \
-    npm install --global corepack yarn && \
+    npm install --global corepack && \
     corepack enable && \
     corepack install -g yarn@4.0.2
 
