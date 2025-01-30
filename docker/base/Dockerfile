@@ -21,6 +21,10 @@ RUN apt-get update && \
     libsasl2-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
+    . $HOME/.cargo/env
+
 # Get yq from official image
 FROM mikefarah/yq:latest AS yq
 
@@ -34,10 +38,6 @@ COPY --from=yq /usr/bin/yq /usr/bin/yq
 RUN npm install --global corepack && \
     corepack enable && \
     corepack install -g yarn@4.0.2
-
-# Install Rust
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
-    . $HOME/.cargo/env
 
 # Install Foundry
 RUN curl -L https://foundry.paradigm.xyz | bash && \
