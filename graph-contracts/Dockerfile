@@ -22,7 +22,7 @@ FROM localhost/local-base-runtime:latest
 
 WORKDIR /opt
 
-COPY --from=builder /opt/contracts-build/packages/contracts/build /opt/contracts/build
+COPY --from=builder /opt/contracts-build/packages/contracts /opt/contracts/packages/contracts
 
 RUN git clone https://github.com/graphprotocol/graph-network-subgraph --branch 'v1.1.0' && \
     cd graph-network-subgraph && \
