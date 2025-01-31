@@ -1,17 +1,24 @@
 services:
-  chain:
-    container_name: chain
-    image: ghcr.io/foundry-rs/foundry:latest
-    ports: ["${CHAIN_RPC}:8545"]
-    command: ["anvil --host=0.0.0.0 --chain-id=1337 --base-fee=0"]
-    healthcheck: { interval: 1s, retries: 10, test: cast block }
+  # Base images first with no dependencies
+  base-builder:
+    image: local-base-builder:latest
+    build:
+      context: docker/base
+      dockerfile: Dockerfile
+      target: builder
+      platforms:
+        - linux/arm64
 
-  ipfs:
-    container_name: ipfs
-    image: ipfs/kubo:v0.27.0
-    ports: ["${IPFS_RPC}:5001"]
-    healthcheck: { interval: 1s, retries: 10, test: ipfs id }
+  base-runtime:
+    image: local-base-runtime:latest
+    build:
+      context: docker/base
+      dockerfile: Dockerfile
+      target: runtime-base
+      platforms:
+        - linux/arm64
 
+  # Infrastructure services next
   postgres:
     container_name: postgres
     image: postgres:14.5-alpine
@@ -25,116 +32,33 @@ services:
       POSTGRES_USER: postgres
     healthcheck: { interval: 1s, retries: 10, test: pg_isready -U postgres }
 
-  graph-node:
-    container_name: graph-node
-    build: { context: "graph-node" }
-    depends_on:
-      chain: { condition: service_healthy }
-      ipfs: { condition: service_healthy }
-      postgres: { condition: service_healthy }
-    stop_signal: SIGKILL
+  ipfs:
+    container_name: ipfs
+    image: ipfs/kubo:v0.22.0
     ports:
-      - ${GRAPH_NODE_GRAPHQL}:8000
-      - ${GRAPH_NODE_ADMIN}:8020
-      - ${GRAPH_NODE_STATUS}:8030
-      - ${GRAPH_NODE_METRICS}:8040
-    volumes:
-      - ./.env:/opt/.env:ro
+      - 5001:5001
+    environment:
+      - IPFS_PROFILE=server
+      - IPFS_SWARM_KEY_FILE=/data/ipfs/swarm.key
+    command: ["daemon", "--migrate=true", "--agent-version-suffix=docker", "--enable-gc", "--api=/ip4/0.0.0.0/tcp/5001"]
     healthcheck:
-      { interval: 1s, retries: 10, test: curl -f http://127.0.0.1:8030 }
-
-  graph-contracts:
-    container_name: graph-contracts
-    build: { context: graph-contracts }
-    depends_on:
-      graph-node: { condition: service_healthy }
-    volumes:
-      - ./.env:/opt/.env:ro
-      - ./contracts.json:/opt/contracts.json:ro
-
-  tap-contracts:
-    container_name: tap-contracts
-    build: { context: tap-contracts }
-    depends_on:
-      graph-contracts: { condition: service_completed_successfully }
-    volumes:
-      - ./.env:/opt/.env:ro
-      - ./contracts.json:/opt/contracts.json:ro
-
-  block-oracle:
-    container_name: block-oracle
-    build: { context: block-oracle }
-    depends_on:
-      tap-contracts: { condition: service_completed_successfully }
-    stop_signal: SIGKILL
-    volumes:
-      - ./.env:/opt/.env:ro
-      - ./contracts.json:/opt/contracts.json:ro
-    healthcheck:
+      test: ipfs id
       interval: 1s
-      retries: 600
-      test: curl -f http://127.0.0.1:9090/metrics
-
-  indexer-agent:
-    container_name: indexer-agent
-    platform: linux/arm64
-    image: local-indexer-agent:latest
-    depends_on:
-      block-oracle: { condition: service_healthy }
-    ports: ["${INDEXER_MANAGEMENT}:7600"]
-    stop_signal: SIGKILL
+      retries: 10
     volumes:
-      - ./.env:/opt/.env:ro
-      - ./contracts.json:/opt/contracts.json:ro
-    healthcheck:
-      interval: 10s
-      retries: 600
-      test: curl -f http://127.0.0.1:7600/
+      - ipfs-data:/data/ipfs
+    user: 1000:1000
 
-  subgraph-deploy:
-    container_name: subgraph-deploy
-    build: { context: subgraph-deploy }
-    depends_on:
-      indexer-agent: { condition: service_healthy }
-    volumes:
-      - ./.env:/opt/.env:ro
-      - ./contracts.json:/opt/contracts.json:ro
-
-  indexer-service:
-    container_name: indexer-service
-    build: { context: indexer-service }
-    depends_on:
-      indexer-agent: { condition: service_healthy }
-    ports: ["${INDEXER_SERVICE}:7601"]
-    stop_signal: SIGKILL
-    volumes:
-      - ./.env:/opt/.env:ro
-      - ./contracts.json:/opt/contracts.json:ro
-
-  tap-aggregator:
-    container_name: tap-aggregator
-    build: { context: tap-aggregator }
-    depends_on:
-      tap-contracts: { condition: service_completed_successfully }
-    ports: ["${TAP_AGGREGATOR}:7610"]
-    stop_signal: SIGKILL
-    volumes:
-      - ./.env:/opt/.env:ro
-      - ./contracts.json:/opt/contracts.json:ro
-
-  tap-agent:
-    container_name: tap-agent
-    build: { context: tap-agent }
-    depends_on:
-      indexer-agent: { condition: service_healthy }
-    stop_signal: SIGKILL
-    volumes:
-      - ./.env:/opt/.env:ro
-      - ./contracts.json:/opt/contracts.json:ro
+  chain:
+    container_name: chain
+    image: ghcr.io/foundry-rs/foundry:latest
+    ports: ["${CHAIN_RPC}:8545"]
+    command: ["anvil --host=0.0.0.0 --chain-id=1337 --base-fee=0"]
+    healthcheck: { interval: 1s, retries: 10, test: cast block }
 
   redpanda:
     container_name: redpanda
-    image: docker.redpanda.com/redpandadata/redpanda:v23.3.5
+    image: docker.redpanda.com/redpandadata/redpanda:v23.2.16
     ports:
       - ${REDPANDA_KAFKA}:9092
       - ${REDPANDA_ADMIN}:9644
@@ -155,20 +79,194 @@ services:
       retries: 600
       test: rpk topic list --brokers="localhost:9092"
 
+  # Graph node and related services
+  graph-node:
+    container_name: graph-node
+    platform: linux/arm64
+    image: local-network_graph-node:latest
+    pull_policy: never
+    build: 
+      context: graph-node
+      dockerfile: Dockerfile
+    depends_on:
+      chain: { condition: service_healthy }
+      ipfs: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+    stop_signal: SIGKILL
+    ports:
+      - ${GRAPH_NODE_GRAPHQL}:8000
+      - ${GRAPH_NODE_ADMIN}:8020
+      - ${GRAPH_NODE_STATUS}:8030
+      - ${GRAPH_NODE_METRICS}:8040
+    environment:
+      GRAPH_ALLOW_NON_DETERMINISTIC_IPFS: "true"
+      IPFS_METHOD: "http"
+    volumes:
+      - ./.env:/opt/.env:ro
+    healthcheck:
+      { interval: 1s, retries: 10, test: curl -f http://127.0.0.1:8030 }
+
+  # Contract deployment services
+  graph-contracts:
+    container_name: graph-contracts
+    platform: linux/arm64
+    image: local-network_graph-contracts:latest
+    pull_policy: never
+    build: 
+      context: graph-contracts
+      dockerfile: Dockerfile
+      platforms:
+        - linux/arm64
+    depends_on:
+      graph-node: { condition: service_healthy }
+    volumes:
+      - ./.env:/opt/.env:ro
+      - ./contracts.json:/opt/contracts.json:ro
+
+  tap-contracts:
+    container_name: tap-contracts
+    platform: linux/arm64
+    image: local-network_tap-contracts:latest
+    pull_policy: never
+    build:
+      context: tap-contracts
+      dockerfile: Dockerfile
+    depends_on:
+      graph-contracts: { condition: service_completed_successfully }
+    volumes:
+      - ./.env:/opt/.env:ro
+      - ./contracts.json:/opt/contracts.json:ro
+
+  # Indexer services in sequence
+  block-oracle:
+    container_name: block-oracle
+    platform: linux/arm64
+    image: local-network_block-oracle:latest
+    pull_policy: never
+    build:
+      context: block-oracle
+      dockerfile: Dockerfile
+      platforms:
+        - linux/arm64
+    depends_on:
+      tap-contracts: { condition: service_completed_successfully }
+    stop_signal: SIGKILL
+    volumes:
+      - ./.env:/opt/.env:ro
+      - ./contracts.json:/opt/contracts.json:ro
+    healthcheck:
+      interval: 1s
+      retries: 600
+      test: curl -f http://127.0.0.1:9090/metrics
+
+  indexer-agent:
+    container_name: indexer-agent
+    platform: linux/arm64
+    image: local-indexer-agent:latest
+    pull_policy: never
+    build:
+      context: indexer-agent
+      dockerfile: Dockerfile
+    depends_on:
+      block-oracle: { condition: service_healthy }
+    ports: ["${INDEXER_MANAGEMENT}:7600"]
+    stop_signal: SIGKILL
+    volumes:
+      - ./.env:/opt/.env:ro
+      - ./contracts.json:/opt/contracts.json:ro
+    healthcheck:
+      interval: 10s
+      retries: 600
+      test: curl -f http://127.0.0.1:7600/
+
+  indexer-service:
+    container_name: indexer-service
+    platform: linux/arm64
+    image: local-network_indexer-service:latest
+    pull_policy: never
+    build: 
+      context: indexer-service
+      dockerfile: Dockerfile
+    depends_on:
+      indexer-agent: { condition: service_healthy }
+    ports: ["${INDEXER_SERVICE}:7601"]
+    stop_signal: SIGKILL
+    volumes:
+      - ./.env:/opt/.env:ro
+      - ./contracts.json:/opt/contracts.json:ro
+
+  # TAP services
+  tap-agent:
+    container_name: tap-agent
+    platform: linux/arm64
+    image: local-network_tap-agent:latest
+    pull_policy: never
+    build: 
+      context: tap-agent
+      dockerfile: Dockerfile
+    depends_on:
+      indexer-agent: { condition: service_healthy }
+    ports: ["${INDEXER_SERVICE}:7601"]
+    stop_signal: SIGKILL
+    volumes:
+      - ./.env:/opt/.env:ro
+      - ./contracts.json:/opt/contracts.json:ro
+
+  tap-aggregator:
+    container_name: tap-aggregator
+    platform: linux/arm64
+    image: local-network_tap-aggregator:latest
+    pull_policy: never
+    build: 
+      context: tap-aggregator
+      dockerfile: Dockerfile
+    depends_on:
+      tap-contracts: { condition: service_completed_successfully }
+    ports: ["${TAP_AGGREGATOR}:7610"]
+    stop_signal: SIGKILL
+    volumes:
+      - ./.env:/opt/.env:ro
+      - ./contracts.json:/opt/contracts.json:ro
+
   tap-escrow-manager:
     container_name: tap-escrow-manager
-    build: { context: tap-escrow-manager }
+    platform: linux/arm64
+    image: local-tap-escrow-manager:latest
+    pull_policy: never
+    build:
+      context: tap-escrow-manager
+      dockerfile: Dockerfile
     depends_on:
       redpanda: { condition: service_healthy }
       subgraph-deploy: { condition: service_completed_successfully }
     stop_signal: SIGKILL
+    volumes:
+      - ./.env:/home/runner/.env:ro
+      - ./contracts.json:/home/runner/contracts.json:ro
+
+  # Deployment services
+  subgraph-deploy:
+    container_name: subgraph-deploy
+    platform: linux/arm64
+    image: local-network_subgraph-deploy:latest
+    pull_policy: never
+    build: 
+      context: subgraph-deploy
+      dockerfile: Dockerfile
+    depends_on:
+      indexer-agent: { condition: service_healthy }
     volumes:
       - ./.env:/opt/.env:ro
       - ./contracts.json:/opt/contracts.json:ro
 
   gateway:
     container_name: gateway
-    build: { context: gateway }
+    platform: linux/arm64
+    image: local-network_gateway:latest
+    pull_policy: never
+    build: 
+      context: gateway
+      dockerfile: Dockerfile
     depends_on:
       subgraph-deploy: { condition: service_completed_successfully }
     ports: ["${GATEWAY}:7700"]
@@ -176,3 +274,6 @@ services:
     volumes:
       - ./.env:/opt/.env:ro
       - ./contracts.json:/opt/contracts.json:ro
+
+volumes:
+  ipfs-data:
