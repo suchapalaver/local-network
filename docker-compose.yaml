@@ -34,20 +34,9 @@ services:
 
   ipfs:
     container_name: ipfs
-    image: ipfs/kubo:v0.22.0
-    ports:
-      - 5001:5001
-    environment:
-      - IPFS_PROFILE=server
-      - IPFS_SWARM_KEY_FILE=/data/ipfs/swarm.key
-    command: ["daemon", "--migrate=true", "--agent-version-suffix=docker", "--enable-gc", "--api=/ip4/0.0.0.0/tcp/5001"]
-    healthcheck:
-      test: ipfs id
-      interval: 1s
-      retries: 10
-    volumes:
-      - ipfs-data:/data/ipfs
-    user: 1000:1000
+    image: ipfs/kubo:v0.27.0
+    ports: ["${IPFS_RPC}:5001"]
+    healthcheck: { interval: 1s, retries: 10, test: ipfs id }
 
   chain:
     container_name: chain
