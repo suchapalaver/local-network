@@ -18,6 +18,12 @@ For example, to build `indexer-tap-agent`, run the following from the root of th
 docker build -t local-indexer-tap-agent:latest -f Dockerfile.indexer-tap-agent .
 ```
 
+To run `docker compose up` first `docker compose build` the `base-builder` and `base-runtime` images:
+
+```bash
+docker compose build base-builder base-runtime
+```
+
 ## local-network upstream docs
 
 a local Graph network for debugging & integration tests
