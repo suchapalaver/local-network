@@ -5,7 +5,8 @@ RUN apt-get update && \
     ca-certificates \
     apt-transport-https \
     curl \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    sudo \
+    && curl -fsSL https://deb.nodesource.com/setup_23.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/* \
     && corepack enable \
@@ -52,9 +53,10 @@ RUN curl -L https://foundry.paradigm.xyz | bash && \
     ln -s /root/.foundry/bin/anvil /usr/local/bin/anvil
 
 # Pre-download Solidity compiler for hardhat
-RUN mkdir -p /root/.cache/hardhat-nodejs/compilers && \
+RUN mkdir -p /root/.cache/hardhat-nodejs/compilers/linux-amd64 && \
     curl -L https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.7.6+commit.7338295f > \
-    /root/.cache/hardhat-nodejs/compilers/solc-0.7.6+commit.7338295f
+    /root/.cache/hardhat-nodejs/compilers/linux-amd64/solc-linux-amd64-v0.7.6+commit.7338295f && \
+    chmod +x /root/.cache/hardhat-nodejs/compilers/linux-amd64/solc-linux-amd64-v0.7.6+commit.7338295f
 
 FROM debian:bookworm-slim AS runtime-base
 RUN apt-get update && \
