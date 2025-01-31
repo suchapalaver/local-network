@@ -36,6 +36,10 @@ services:
     container_name: ipfs
     image: ipfs/kubo:v0.27.0
     ports: ["${IPFS_RPC}:5001"]
+    user: "1000:1000"
+    command: ["daemon", "--migrate=true", "--api=/ip4/0.0.0.0/tcp/5001"]
+    volumes:
+      - ipfs-data:/data/ipfs
     healthcheck: { interval: 1s, retries: 10, test: ipfs id }
 
   chain:
