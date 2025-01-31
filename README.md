@@ -1,4 +1,24 @@
-# local-network
+# local-network ARM64
+
+We all know Macs are abominations and we'd all rather work on Linux laptops.
+
+That said ...
+
+Use locally built images where necessary for:
+
+- `graph-node`
+- `indexer-agent`
+- `indexer-service`
+- `indexer-tap-agent`
+- `tap-aggregator`
+
+For example, to build `indexer-tap-agent`, run the following from the root of the `indexer-rs` repo:
+
+```bash
+docker build -t local-indexer-tap-agent:latest -f Dockerfile.indexer-tap-agent .
+```
+
+## local-network upstream docs
 
 a local Graph network for debugging & integration tests
 
