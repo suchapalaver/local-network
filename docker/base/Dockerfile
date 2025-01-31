@@ -1,17 +1,21 @@
 FROM debian:bookworm-slim AS rust-builder
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates apt-transport-https && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    apt-transport-https \
+    curl \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && corepack enable \
+    && corepack prepare yarn@4.0.2 --activate
 
 # Install common build dependencies
 RUN apt-get update && \
     apt-get install -y \
-    curl \
     git \
     jq \
-    nodejs \
-    npm \
     python3 \
     build-essential \
     pkg-config \
@@ -20,10 +24,6 @@ RUN apt-get update && \
     cmake \
     libsasl2-dev \
     && rm -rf /var/lib/apt/lists/*
-
-# Install Rust
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
-    . $HOME/.cargo/env
 
 # Get yq from official image
 FROM mikefarah/yq:latest AS yq
@@ -34,14 +34,22 @@ FROM rust-builder AS builder
 # Copy yq from official image
 COPY --from=yq /usr/bin/yq /usr/bin/yq
 
-# Install Node.js tools properly
-RUN npm install --global corepack && \
-    corepack enable && \
-    corepack install -g yarn@4.0.2
+# Install Rust and components in a single directory
+RUN mkdir -p /tmp/rust && \
+    cd /tmp/rust && \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
+    . $HOME/.cargo/env && \
+    rustup component add rustfmt && \
+    rustup component add cargo && \
+    rustup component add rust-std && \
+    rustup component add rustc
 
-# Install Foundry
+# Install Foundry and make it available in PATH
 RUN curl -L https://foundry.paradigm.xyz | bash && \
-    /root/.foundry/bin/foundryup
+    /root/.foundry/bin/foundryup && \
+    ln -s /root/.foundry/bin/forge /usr/local/bin/forge && \
+    ln -s /root/.foundry/bin/cast /usr/local/bin/cast && \
+    ln -s /root/.foundry/bin/anvil /usr/local/bin/anvil
 
 # Pre-download Solidity compiler for hardhat
 RUN mkdir -p /root/.cache/hardhat-nodejs/compilers && \
@@ -50,16 +58,18 @@ RUN mkdir -p /root/.cache/hardhat-nodejs/compilers && \
 
 FROM debian:bookworm-slim AS runtime-base
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    apt-transport-https \
     curl \
+    unzip \
     git \
     jq \
-    nodejs \
-    npm \
-    && rm -rf /var/lib/apt/lists/* && \
-    npm install --global corepack && \
-    corepack enable && \
-    corepack install -g yarn@4.0.2
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && rm -rf /var/lib/apt/lists/* \
+    && corepack enable \
+    && corepack prepare yarn@4.0.2 --activate
 
 # Copy yq and Solidity compiler from builder
 COPY --from=yq /usr/bin/yq /usr/bin/yq
