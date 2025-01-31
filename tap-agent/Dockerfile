@@ -1,9 +1,15 @@
-FROM ghcr.io/graphprotocol/indexer-tap-agent:main
-RUN apt-get update \
-  && apt-get install -y git jq \
-  && rm -rf /var/lib/apt/lists/*
+FROM localhost/local-base-builder:latest AS builder
 
-RUN cd /opt && git clone https://github.com/graphprotocol/indexer-rs
+WORKDIR /opt
+
+# Copy from your local arm64-compatible image
+COPY --from=localhost/local-indexer-tap-agent:latest /usr/local/bin/indexer-tap-agent /opt/tap-agent
+
+FROM localhost/local-base-runtime:latest
+
+WORKDIR /opt
+
+COPY --from=builder /opt/tap-agent /opt/tap-agent
 
 COPY ./run.sh /opt/run.sh
-ENTRYPOINT bash -cl /opt/run.sh
+ENTRYPOINT ["bash", "-cl", "/opt/run.sh"]

@@ -1,7 +1,16 @@
-FROM ghcr.io/semiotic-ai/tap_aggregator:sha-6af1add
-RUN apt-get update \
-  && apt-get install -y jq \
-  && rm -rf /var/lib/apt/lists/*
+FROM localhost/local-base-builder:latest AS builder
+
+WORKDIR /opt
+
+# Copy from your local arm64-compatible image with correct name
+COPY --from=localhost/local-tap-aggregator:latest /usr/local/bin/tap_aggregator /opt/tap_aggregator
+
+FROM localhost/local-base-runtime:latest
+
+WORKDIR /opt
+
+# Copy the binary
+COPY --from=builder /opt/tap_aggregator .
 
 COPY ./run.sh /opt/run.sh
-ENTRYPOINT sh -cl /opt/run.sh
+ENTRYPOINT ["bash", "-cl", "/opt/run.sh"]

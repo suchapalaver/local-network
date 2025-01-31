@@ -14,7 +14,6 @@ FROM localhost/local-base-runtime:latest
 
 WORKDIR /opt/app
 
-# Copy built binary
 COPY --from=builder /opt/bin/block-oracle .
 
 # Build subgraph and contracts with different directory names

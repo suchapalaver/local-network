@@ -1,7 +1,15 @@
-FROM ghcr.io/graphprotocol/indexer-service-rs:v1.4.0
-RUN apt-get update \
-  && apt-get install -y curl jq \
-  && rm -rf /var/lib/apt/lists/*
+FROM localhost/local-base-builder:latest AS builder
+
+WORKDIR /opt
+
+# Copy from your local arm64-compatible image
+COPY --from=localhost/local-indexer-service:latest /usr/local/bin/indexer-service-rs /opt/indexer-service
+
+FROM localhost/local-base-runtime:latest
+
+WORKDIR /opt
+
+COPY --from=builder /opt/indexer-service /opt/indexer-service
 
 COPY ./run.sh /opt/run.sh
-ENTRYPOINT bash -cl /opt/run.sh
+ENTRYPOINT ["bash", "-cl", "/opt/run.sh"]

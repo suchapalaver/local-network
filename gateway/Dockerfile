@@ -2,7 +2,6 @@ FROM localhost/local-base-builder:latest AS builder
 
 WORKDIR /opt
 
-# Build gateway
 RUN git clone https://github.com/edgeandnode/gateway --branch 'main' gateway-build && \
     cd gateway-build && \
     . $HOME/.cargo/env && \
@@ -15,7 +14,6 @@ FROM localhost/local-base-runtime:latest
 
 WORKDIR /opt
 
-# Copy built binary
 COPY --from=builder /opt/graph-gateway .
 
 COPY ./run.sh /opt/run.sh
