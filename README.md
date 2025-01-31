@@ -24,6 +24,12 @@ To run `docker compose up` first `docker compose build` the `base-builder` and `
 docker compose build base-builder base-runtime
 ```
 
+## This fork useful commands:
+
+```terminal
+docker compose down --remove-orphans -v
+```
+
 ## local-network upstream docs
 
 a local Graph network for debugging & integration tests
