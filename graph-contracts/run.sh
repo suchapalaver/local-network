@@ -11,7 +11,7 @@ then
   exit 0
 fi
 
-cd /opt/contracts/packages/contracts
+cd /opt/contracts-build/packages/contracts
 echo "{}" > addresses-local.json
 sed -i "s/127.0.0.1:${CHAIN_RPC}/chain:${CHAIN_RPC}/g" hardhat.config.ts
 sed -i "s/\&governor.*$/\&governor \"${ACCOUNT0_ADDRESS}\"/g" config/graph.localhost.yml
