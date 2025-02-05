@@ -45,7 +45,7 @@ RUN mkdir -p /tmp/rust && \
     rustup component add rust-std && \
     rustup component add rustc
 
-# Install Foundry and make it available in PATH
+# Install Foundry in builder stage only
 RUN curl -L https://foundry.paradigm.xyz | bash && \
     /root/.foundry/bin/foundryup && \
     ln -s /root/.foundry/bin/forge /usr/local/bin/forge && \
@@ -72,6 +72,11 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/* \
     && corepack enable \
     && corepack prepare yarn@4.0.2 --activate
+
+# Copy Foundry binaries from builder stage
+COPY --from=builder /root/.foundry/bin/forge /usr/local/bin/forge
+COPY --from=builder /root/.foundry/bin/cast /usr/local/bin/cast
+COPY --from=builder /root/.foundry/bin/anvil /usr/local/bin/anvil
 
 # Copy yq and Solidity compiler from builder
 COPY --from=yq /usr/bin/yq /usr/bin/yq
