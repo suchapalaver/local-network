@@ -82,9 +82,12 @@ services:
       context: graph-node
       dockerfile: Dockerfile
     depends_on:
-      chain: { condition: service_healthy }
-      ipfs: { condition: service_healthy }
-      postgres: { condition: service_healthy }
+      chain: 
+        condition: service_healthy
+      ipfs: 
+        condition: service_healthy
+      postgres: 
+        condition: service_healthy
     stop_signal: SIGKILL
     ports:
       - ${GRAPH_NODE_GRAPHQL}:8000
@@ -97,7 +100,10 @@ services:
     volumes:
       - ./.env:/opt/.env:ro
     healthcheck:
-      { interval: 1s, retries: 10, test: curl -f http://127.0.0.1:8030 }
+      test: ["CMD", "curl", "-f", "http://localhost:8030"]
+      interval: 1s
+      timeout: 3s
+      retries: 10
 
   # Contract deployment services
   graph-contracts:
@@ -111,7 +117,8 @@ services:
       platforms:
         - linux/arm64
     depends_on:
-      graph-node: { condition: service_healthy }
+      graph-node: 
+        condition: service_healthy
     volumes:
       - ./.env:/opt/.env:ro
       - ./contracts.json:/opt/contracts.json:ro
@@ -125,7 +132,8 @@ services:
       context: tap-contracts
       dockerfile: Dockerfile
     depends_on:
-      graph-contracts: { condition: service_completed_successfully }
+      graph-contracts:
+        condition: service_completed_successfully
     volumes:
       - ./.env:/opt/.env:ro
       - ./contracts.json:/opt/contracts.json:ro
@@ -142,7 +150,8 @@ services:
       platforms:
         - linux/arm64
     depends_on:
-      tap-contracts: { condition: service_completed_successfully }
+      tap-contracts: 
+        condition: service_completed_successfully
     stop_signal: SIGKILL
     volumes:
       - ./.env:/opt/.env:ro
@@ -161,7 +170,8 @@ services:
       context: indexer-agent
       dockerfile: Dockerfile
     depends_on:
-      block-oracle: { condition: service_healthy }
+      block-oracle: 
+        condition: service_healthy
     ports: ["${INDEXER_MANAGEMENT}:7600"]
     stop_signal: SIGKILL
     volumes:
@@ -181,7 +191,8 @@ services:
       context: indexer-service
       dockerfile: Dockerfile
     depends_on:
-      indexer-agent: { condition: service_healthy }
+      indexer-agent: 
+        condition: service_healthy
     ports: ["${INDEXER_SERVICE}:7601"]
     stop_signal: SIGKILL
     volumes:
@@ -214,7 +225,8 @@ services:
       context: tap-aggregator
       dockerfile: Dockerfile
     depends_on:
-      tap-contracts: { condition: service_completed_successfully }
+      tap-contracts: 
+        condition: service_completed_successfully
     ports: ["${TAP_AGGREGATOR}:7610"]
     stop_signal: SIGKILL
     volumes:
@@ -230,8 +242,10 @@ services:
       context: tap-escrow-manager
       dockerfile: Dockerfile
     depends_on:
-      redpanda: { condition: service_healthy }
-      subgraph-deploy: { condition: service_completed_successfully }
+      redpanda: 
+        condition: service_healthy
+      subgraph-deploy: 
+        condition: service_completed_successfully
     stop_signal: SIGKILL
     volumes:
       - ./.env:/home/runner/.env:ro
@@ -247,7 +261,8 @@ services:
       context: subgraph-deploy
       dockerfile: Dockerfile
     depends_on:
-      indexer-agent: { condition: service_healthy }
+      indexer-agent: 
+        condition: service_healthy
     volumes:
       - ./.env:/opt/.env:ro
       - ./contracts.json:/opt/contracts.json:ro
@@ -261,7 +276,8 @@ services:
       context: gateway
       dockerfile: Dockerfile
     depends_on:
-      subgraph-deploy: { condition: service_completed_successfully }
+      subgraph-deploy: 
+        condition: service_completed_successfully
     ports: ["${GATEWAY}:7700"]
     stop_signal: SIGKILL
     volumes:
