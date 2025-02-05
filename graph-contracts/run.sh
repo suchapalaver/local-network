@@ -2,6 +2,9 @@
 set -eu
 . /opt/.env
 
+# Wait for graph-node to be ready
+/opt/wait-for-it graph-node:8030 -t 60
+
 # don't rerun when retriggered via a service_completed_successfully condition
 if curl http://graph-node:${GRAPH_NODE_GRAPHQL}/subgraphs/name/graph-network \
   -H 'content-type: application/json' \

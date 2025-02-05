@@ -19,5 +19,8 @@ RUN git clone https://github.com/graphprotocol/graph-network-subgraph --branch '
     cd graph-network-subgraph && \
     yarn
 
+COPY wait-for-it /opt/wait-for-it
+RUN chmod +x /opt/wait-for-it
+
 COPY ./run.sh /opt/run.sh
 ENTRYPOINT ["bash", "-cl", "/opt/run.sh"]
